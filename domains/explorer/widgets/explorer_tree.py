@@ -13,3 +13,10 @@ class ExplorerTree(QTreeView):
             self.hideColumn(i)
 
         self.clicked.connect(on_click)
+        self.clicked.connect(self.expand_or_collapse_on_click)
+
+    def expand_or_collapse_on_click(self, index):
+        if self.isExpanded(index):
+            self.collapse(index)
+        else:
+            self.expand(index)
