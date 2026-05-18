@@ -1,5 +1,6 @@
 from pathlib import Path
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView
+from PySide6.QtCore import Qt
 
 from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 
@@ -60,12 +61,27 @@ class ExplorerWindow(QMainWindow):
         tree_page = QWidget()
         tree_layout = QVBoxLayout(tree_page)
 
+        splitter = QSplitter(Qt.Horizontal)
+
         self.tree = ExplorerTree(
             self.fs.model,
             self.controller.on_tree_clicked
         )
 
-        tree_layout.addWidget(self.tree)
+        self.tree.setMinimumWidth(300)
+
+        # SECOND COLUMN WIDGET: (here, as an example, a QListView showing list of files in selected directory)
+        self.detail_list = QListView()
+        self.detail_list.setModel(self.fs.model)
+
+        splitter.addWidget(self.tree)
+        splitter.addWidget(self.detail_list)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
+
+        tree_layout.addWidget(splitter)
+        self.tree.clicked.connect(self.show_details_for_index)
+
 
         # FINDER MODE
         finder_page = QWidget()
@@ -106,3 +122,12 @@ class ExplorerWindow(QMainWindow):
 
     def set_mode(self, index: int):
         self.stack.setCurrentIndex(index)
+
+    def show_details_for_index(self, index):
+        """Set the right pane to show contents of the selected folder in the left tree."""
+        if self.fs.model.isDir(index):
+            self.detail_list.setRootIndex(index)
+        else:
+            # Optionally set to parent directory or clear
+            parent = index.parent()
+            self.detail_list.setRootIndex(parent)
