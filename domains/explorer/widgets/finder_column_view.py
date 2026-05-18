@@ -7,5 +7,5 @@ class FinderColumnView(QColumnView):
         super().__init__()
 
         self.setModel(model)
-        self.clicked.connect(on_click)
+        # self.clicked.connect(on_click)
         self.doubleClicked.connect(on_double_click)
