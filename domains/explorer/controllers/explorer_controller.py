@@ -65,23 +65,29 @@ class ExplorerController:
     # CONTEXT MENU
     # --------
 
-    def show_context_menu(self, widget, index, point):
+    def show_context_menu(self, widget, index, point, directory_mode=False):
         menu = QMenu(widget)
-        rename_action = QAction("Rename", widget)
-        new_file_action = QAction("New File", widget)
-        new_folder_action = QAction("New Folder", widget)
-        delete_action = QAction("Delete", widget)
-
-        rename_action.triggered.connect(lambda: self.rename_item(index))
-        new_file_action.triggered.connect(lambda: self.create_new_file(index))
-        new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
-        delete_action.triggered.connect(lambda: self.delete_item(index))
-
-        menu.addAction(rename_action)
-        menu.addAction(new_file_action)
-        menu.addAction(new_folder_action)
-        menu.addSeparator()
-        menu.addAction(delete_action)
+        if directory_mode:  # Only show new file/new folder for the current directory
+            new_file_action = QAction("New File", widget)
+            new_folder_action = QAction("New Folder", widget)
+            new_file_action.triggered.connect(lambda: self.create_new_file(index))
+            new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
+            menu.addAction(new_file_action)
+            menu.addAction(new_folder_action)
+        else:  # Show all actions for a file/folder
+            rename_action = QAction("Rename", widget)
+            new_file_action = QAction("New File", widget)
+            new_folder_action = QAction("New Folder", widget)
+            delete_action = QAction("Delete", widget)
+            rename_action.triggered.connect(lambda: self.rename_item(index))
+            new_file_action.triggered.connect(lambda: self.create_new_file(index))
+            new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
+            delete_action.triggered.connect(lambda: self.delete_item(index))
+            menu.addAction(rename_action)
+            menu.addAction(new_file_action)
+            menu.addAction(new_folder_action)
+            menu.addSeparator()
+            menu.addAction(delete_action)
 
         menu.exec(widget.viewport().mapToGlobal(point))
 
@@ -106,7 +112,7 @@ class ExplorerController:
         if not self.fs.is_dir(dir_path):  # If it's a file, get its parent
             dir_path = os.path.dirname(dir_path)
         new_file, ok = QInputDialog.getText(
-            self.view, "New File", "Enter file name:"
+            self.view, "New File", "Enter file name with extension:"
         )
         if ok and new_file:
             new_path = os.path.join(dir_path, new_file)
