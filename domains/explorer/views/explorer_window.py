@@ -126,9 +126,11 @@ class ExplorerWindow(QMainWindow):
 
     def show_list_context_menu(self, point):
         index = self.detail_list.indexAt(point)
-        if not index.isValid():
-            return
-        self.controller.show_context_menu(self.detail_list, index, point)
+        if index.isValid():  # On file/folder
+            self.controller.show_context_menu(self.detail_list, index, point, directory_mode=False)
+        else:  # On blank area: use the current directory displayed in the details pane
+            dir_index = self.detail_list.rootIndex()
+            self.controller.show_context_menu(self.detail_list, dir_index, point, directory_mode=True)
 
     # -------------------------
     # VIEW MODES
