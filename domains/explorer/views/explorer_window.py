@@ -63,9 +63,14 @@ class ExplorerWindow(QMainWindow):
 
         splitter = QSplitter(Qt.Horizontal)
 
-        self.tree = ExplorerTree(
+        """self.tree = ExplorerTree(
             self.fs.model,
             self.controller.on_tree_clicked
+        )"""
+        self.tree = ExplorerTree(
+            self.fs.model,
+            self.controller.on_tree_clicked,
+            self.controller
         )
 
         self.tree.setMinimumWidth(300)
@@ -73,6 +78,8 @@ class ExplorerWindow(QMainWindow):
         # SECOND COLUMN WIDGET: (here, as an example, a QListView showing list of files in selected directory)
         self.detail_list = QListView()
         self.detail_list.setModel(self.fs.model)
+        self.detail_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.detail_list.customContextMenuRequested.connect(self.show_list_context_menu)
 
         splitter.addWidget(self.tree)
         splitter.addWidget(self.detail_list)
@@ -90,7 +97,8 @@ class ExplorerWindow(QMainWindow):
         self.column = FinderColumnView(
             self.fs.model,
             self.controller.on_column_clicked,
-            self.controller.on_double_clicked
+            self.controller.on_double_clicked,
+            self.controller
         )
 
         finder_layout.addWidget(self.column)
@@ -116,6 +124,12 @@ class ExplorerWindow(QMainWindow):
 
         self.statusBar().showMessage(path)
 
+    def show_list_context_menu(self, point):
+        index = self.detail_list.indexAt(point)
+        if not index.isValid():
+            return
+        self.controller.show_context_menu(self.detail_list, index, point)
+
     # -------------------------
     # VIEW MODES
     # -------------------------
@@ -124,7 +138,6 @@ class ExplorerWindow(QMainWindow):
         self.stack.setCurrentIndex(index)
 
     def show_details_for_index(self, index):
-        """Set the right pane to show contents of the selected folder in the left tree."""
         if self.fs.model.isDir(index):
             self.detail_list.setRootIndex(index)
         else:
