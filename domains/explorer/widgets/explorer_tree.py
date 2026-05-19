@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QTreeView, QMenu, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QTreeView, QMenu
 from PySide6.QtGui import QAction
 from PySide6.QtCore import QPoint, Qt
 
@@ -8,7 +8,7 @@ class ExplorerTree(QTreeView):
         super().__init__()
         self.setModel(model)
         self.setColumnWidth(0, 300)
-        self.controller = controller  # Add reference to controller
+        self.controller = controller
 
         for i in range(1, 4):
             self.hideColumn(i)
@@ -28,8 +28,11 @@ class ExplorerTree(QTreeView):
 
     def show_context_menu(self, point: QPoint):
         index = self.indexAt(point)
-        if not index.isValid():
-            return
+        if index.isValid():  # Right-clicked on file/folder
+            self.controller.show_context_menu(self, index, point, directory_mode=False)
+        else:  # Right-clicked empty area: use folder this column is displaying
+            dir_index = self.rootIndex()  # This index points to the folder backing the column/list/tree
+            self.controller.show_context_menu(self, dir_index, point, directory_mode=True)
 
         menu = QMenu(self)
 
