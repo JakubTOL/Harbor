@@ -81,6 +81,7 @@ project/
 
 - Python 3.10+
 - [PySide6](https://pypi.org/project/PySide6/)
+- PyInstaller (optional; required only for code conversion)
 
 ### Installation
 
@@ -92,6 +93,17 @@ pip install PySide6
 
 ```bash
 python main.py
+```
+
+### Converting to executable with use of .venv (Windows)
+
+- Install a PyInstaller
+```bash
+pip install pyinstaller
+```
+- Run the converter command from active .venv
+```bash
+.venv\Scripts\python -m PyInstaller --onefile --windowed --icon=resources/icons/harbor.ico --add-data "resources/icons/harbor.ico;resources/icons" main.py
 ```
 
 ---
