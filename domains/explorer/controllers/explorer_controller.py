@@ -61,9 +61,9 @@ class ExplorerController:
         else:
             self.fs.open_file(self.view, path)
 
-    # --------
+    # -----------------------------
     # CONTEXT MENU
-    # --------
+    # -----------------------------
 
     def show_context_menu(self, widget, index, point, directory_mode=False):
         menu = QMenu(widget)
@@ -86,10 +86,18 @@ class ExplorerController:
             menu.addAction(rename_action)
             menu.addAction(new_file_action)
             menu.addAction(new_folder_action)
-            menu.addSeparator()
+            menu.addSeparator()  # Add a visual separator for the section
             menu.addAction(delete_action)
 
         menu.exec(widget.viewport().mapToGlobal(point))
+
+    # -----------------------------
+    # CONTEXT MENU ACTIONS
+    # -----------------------------
+
+    def open_item_in_native(self, index):
+        #TODO: Create a method for file location open in native explorer.
+        pass
 
     def rename_item(self, index):
         old_path = self.fs.file_path(index)
