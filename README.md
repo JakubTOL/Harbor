@@ -45,20 +45,22 @@ project/
 │  
 ├── domains/
 │   └── explorer/        # Main functional domain
-│       ├── models/      # State/data structures
-│       │   └── explorer_state.py
-│       ├── services/    # Business logic, e.g., filesystem operations
-│       │   └── filesystem_service.py
-│       ├── controllers/ # Interface between UI and logic
-│       │   └── explorer_controller.py
-│       ├── widgets/     # Modular UI components
-│       │   ├── breadcrumb_bar.py
-│       │   ├── navigation_toolbar.py
-│       │   ├── explorer_tree.py
-│       │   ├── finder_column_view.py
-│       │   └── status_bar.py
-│       └── views/       # Composed/primary UI windows
-│           └── explorer_window.py
+│   │   ├── models/      # State/data structures
+│   │   │   └── explorer_state.py
+│   │   ├── services/    # Business logic, e.g., filesystem operations
+│   │   │   └── filesystem_service.py
+│   │   ├── controllers/ # Interface between UI and logic
+│   │   │   └── explorer_controller.py
+│   │   ├── widgets/     # Modular UI components
+│   │   │   ├── breadcrumb_bar.py
+│   │   │   ├── navigation_toolbar.py
+│   │   │   ├── explorer_tree.py
+│   │   │   ├── finder_column_view.py
+│   │   │   └── status_bar.py
+│   │   └── views/       # Composed/primary UI windows
+│   │       └── explorer_window.py
+│   └── application/        # Centralized application startup
+|       └── app.py/      # Application logic
 │ 
 ├── resources/        # Folder for media storage
 │   └── icons/        # files with .ico files
