@@ -1,12 +1,18 @@
 import os
 from pathlib import Path
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QToolButton, QLabel
-from core.constants import BREADCRUMB_RENDER_LIMIT
+from core.constants import BREADCRUMB_RENDER_LIMIT, BREADCRUMB_SEPARATOR, TRUNCATED_BREADCRUMB_SYMBOL
 
 
 class BreadcrumbBar(QWidget):
 
     def __init__(self, on_navigate):
+        """
+        Initialize the breadcrumb bar
+
+        Args:
+            on_navigate: Callback function to call when a breadcrumb is clicked
+        """
         super().__init__()
 
         self.on_navigate = on_navigate
@@ -18,16 +24,28 @@ class BreadcrumbBar(QWidget):
         self.current_path = ""
 
     def set_path(self, path: str):
+        """
+        Set and render the current path as breadcrumbs.
+
+        Args:
+            path (str): The current filesystem path.
+        """
         self.current_path = path
         self._render()
 
     def _clear(self):
+        """
+        Remove all widgets from the breadcrumb layout.
+        """
         while self.layout.count():
             item = self.layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def _render(self):
+        """
+        Render the breadcrumbs based on the current path.
+        """
         self._clear()
 
         path = Path(self.current_path)
@@ -45,14 +63,13 @@ class BreadcrumbBar(QWidget):
             truncated = False
 
         cumulative = ""
-        # "..." button for truncated breadcrumbs
         if truncated:
             btn = QToolButton()
-            btn.setText("...")
+            btn.setText(TRUNCATED_BREADCRUMB_SYMBOL)
             # Optional: Navigate to root or open a dropdown
             btn.clicked.connect(lambda: self.on_navigate(str(Path(*parts[:1]))))
             self.layout.addWidget(btn)
-            self.layout.addWidget(QLabel(">"))
+            self.layout.addWidget(QLabel(BREADCRUMB_SEPARATOR))
 
         for i, part in enumerate(show_parts):
             if truncated:
@@ -72,6 +89,6 @@ class BreadcrumbBar(QWidget):
             self.layout.addWidget(btn)
 
             if i < len(show_parts) - 1:
-                self.layout.addWidget(QLabel(">"))
+                self.layout.addWidget(QLabel(BREADCRUMB_SEPARATOR))
 
         self.layout.addStretch()

@@ -5,6 +5,7 @@ DEFAULT_WINDOW_HEIGHT = 700
 
 BREADCRUMB_SEPARATOR = ">"
 BREADCRUMB_RENDER_LIMIT = 6
+TRUNCATED_BREADCRUMB_SYMBOL = "..."
 
 ICON_PATH = "resources/icons/harbor.png"
 SPLASH_PATH = "resources/harbor_splash.png"

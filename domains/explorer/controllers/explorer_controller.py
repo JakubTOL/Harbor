@@ -8,6 +8,14 @@ import shutil
 class ExplorerController:
 
     def __init__(self, state, fs_service, view):
+        """
+        Initialize the ExplorerController.
+
+        Args:
+            state: The ExplorerState instance holding current explorer state.
+            fs_service: The FileSystemService instance for filesystem operations.
+            view: The view (typically ExplorerWindow) for UI updates.
+        """
         self.state = state
         self.fs = fs_service
         self.view = view
@@ -17,7 +25,12 @@ class ExplorerController:
     # -----------------------------
 
     def set_current_path(self, path: str):
+        """
+        Set the current path in the explorer, update state and view.
 
+        Args:
+            path (str): The filesystem path to set as current.
+        """
         if not self.fs.exists(path):
             return
 
@@ -28,13 +41,22 @@ class ExplorerController:
         self.view.update_path(index, path)
 
     def go_up(self):
+        """
+        Navigate to the parent directory of the current path.
+        """
         parent = str(Path(self.state.current_path).parent)
         self.set_current_path(parent)
 
     def go_home(self):
+        """
+        Navigate to the home directory of the user.
+        """
         self.set_current_path(str(Path.home()))
 
     def refresh(self):
+        """
+        Refresh the filer explorer view for the current directory.
+        """
         current = self.state.current_path
         self.fs.model.setRootPath("")
         self.set_current_path(current)
@@ -43,17 +65,35 @@ class ExplorerController:
     # UI EVENTS
     # -----------------------------
 
-    def on_tree_clicked(self, index):
+    def on_tree_clicked(self, index: int ):
+        """
+        Handle event when a column view item is clicked.
+
+        Args:
+            index (int): The column view item index.
+        """
         path = self.fs.file_path(index)
         if self.fs.is_dir(path):
             self.set_current_path(path)
 
-    def on_column_clicked(self, index):
+    def on_column_clicked(self, index: int):
+        """
+        Handle event when a column view item is clicked.
+
+        Args:
+            index (int): The model index of the clicked item.
+        """
         path = self.fs.file_path(index)
         if self.fs.is_dir(path):
             self.set_current_path(path)
 
-    def on_double_clicked(self, index):
+    def on_double_clicked(self, index: int):
+        """
+        Handle event when item is double-clicked.
+
+        Args:
+            index (int): The model index of the clicked item.
+        """
         path = self.fs.file_path(index)
 
         if self.fs.is_dir(path):
@@ -65,7 +105,16 @@ class ExplorerController:
     # CONTEXT MENU
     # -----------------------------
 
-    def show_context_menu(self, widget, index, point, directory_mode=False):
+    def show_context_menu(self, widget, index, point, directory_mode: bool=False):
+        """
+        Display the context menu for a file or directory.
+
+        Args:
+            widget: The widget where the context menu is requested.
+            index: The model index for the item.
+            point: The QPoint to display the menu.
+            directory_mode (bool): If True, shows directory-only actions.
+        """
         menu = QMenu(widget)
         if directory_mode:  # Only show new file/new folder for the current directory
             new_file_action = QAction("New File", widget)
@@ -95,11 +144,17 @@ class ExplorerController:
     # CONTEXT MENU ACTIONS
     # -----------------------------
 
-    def open_item_in_native(self, index):
+    def open_item_in_native(self, index: int):
         #TODO: Create a method for file location open in native explorer.
         pass
 
-    def rename_item(self, index):
+    def rename_item(self, index: int):
+        """
+        Rename a file or folder via an input dialog.
+
+        Args:
+            index (int): The model index for the item to rename.
+        """
         old_path = self.fs.file_path(index)
         base_dir = os.path.dirname(old_path)
         old_name = os.path.basename(old_path)
@@ -115,7 +170,13 @@ class ExplorerController:
             except Exception as e:
                 QMessageBox.critical(self.view, "Rename Failed", str(e))
 
-    def create_new_file(self, index):
+    def create_new_file(self, index: int):
+        """
+        Create a new file in the selected directory.
+
+        Args:
+            index (int): The model index representing directory or file.
+        """
         dir_path = self.fs.file_path(index)
         if not self.fs.is_dir(dir_path):  # If it's a file, get its parent
             dir_path = os.path.dirname(dir_path)
@@ -130,7 +191,13 @@ class ExplorerController:
             except Exception as e:
                 QMessageBox.critical(self.view, "Create File Failed", str(e))
 
-    def create_new_folder(self, index):
+    def create_new_folder(self, index: int):
+        """
+        Create a new folder in the selected directory.
+
+        Args:
+            index (int): The model index representing directory.
+        """
         dir_path = self.fs.file_path(index)
         if not self.fs.is_dir(dir_path):
             dir_path = os.path.dirname(dir_path)
@@ -145,7 +212,13 @@ class ExplorerController:
             except Exception as e:
                 QMessageBox.critical(self.view, "Create Folder Failed", str(e))
 
-    def delete_item(self, index):
+    def delete_item(self, index: int):
+        """
+        Delete the selected file or folder after confirmation via input dialog.
+
+        Args:
+            index (int): The model index representing directory.
+        """
         path = self.fs.file_path(index)
         if not os.path.exists(path):
             return

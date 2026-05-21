@@ -17,6 +17,9 @@ from domains.explorer.widgets.navigation_toolbar import NavigationToolbar
 class ExplorerWindow(QMainWindow):
 
     def __init__(self):
+        """
+        Initialize the explorer window, controller and UI.
+        """
         super().__init__()
 
         self.setWindowTitle(APP_NAME)
@@ -44,6 +47,9 @@ class ExplorerWindow(QMainWindow):
     # -------------------------
 
     def _build_ui(self):
+        """
+        Build the main UI layout and widgets.
+        """
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -63,10 +69,6 @@ class ExplorerWindow(QMainWindow):
 
         splitter = QSplitter(Qt.Horizontal)
 
-        """self.tree = ExplorerTree(
-            self.fs.model,
-            self.controller.on_tree_clicked
-        )"""
         self.tree = ExplorerTree(
             self.fs.model,
             self.controller.on_tree_clicked,
@@ -116,7 +118,13 @@ class ExplorerWindow(QMainWindow):
     # -------------------------
 
     def update_path(self, index, path: str):
+        """
+        Update the view and UI to reflect the new path.
 
+        Args:
+            index: The model index for the directory.
+            path: The current path as a string.
+        """
         self.breadcrumb.set_path(path)
 
         self.tree.setRootIndex(index)
@@ -125,6 +133,12 @@ class ExplorerWindow(QMainWindow):
         self.statusBar().showMessage(path)
 
     def show_list_context_menu(self, point):
+        """
+        Show the context menu in the detail list view.
+
+        Args:
+            point: The QPoint where the menu should appear.
+        """
         index = self.detail_list.indexAt(point)
         if index.isValid():  # On file/folder
             self.controller.show_context_menu(self.detail_list, index, point, directory_mode=False)
@@ -137,9 +151,21 @@ class ExplorerWindow(QMainWindow):
     # -------------------------
 
     def set_mode(self, index: int):
+        """
+        Switches between view modes (tree and finder).
+
+        Args:
+            index: The model index of the view mode.
+        """
         self.stack.setCurrentIndex(index)
 
     def show_details_for_index(self, index):
+        """
+        Show the list of files for the selected directory.
+
+        Args:
+            index: The selected QModelIndex .
+        """
         if self.fs.model.isDir(index):
             self.detail_list.setRootIndex(index)
         else:

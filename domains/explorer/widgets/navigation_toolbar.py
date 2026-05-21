@@ -5,7 +5,13 @@ from PySide6.QtGui import QAction
 class NavigationToolbar(QToolBar):
 
     def __init__(self, window, controller):
+        """
+        Initialize the navigation toolbar with navigation actions.
 
+        Args:
+            window: The parent main window.
+            controller: The ExplorerController for navigation logic.
+        """
         super().__init__("Navigation")
 
         self.controller = controller
