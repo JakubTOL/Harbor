@@ -5,6 +5,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
 
 from domains.explorer.views.explorer_window import ExplorerWindow
+from core.constants import ICON_PATH, SPLASH_PATH, SPLASH_SCREEN_WIDTH, SPLASH_SCREEN_HEIGHT
 
 
 def resource_path(relative_path):
@@ -14,7 +15,7 @@ def resource_path(relative_path):
     return os.path.join(os.path.abspath("."), relative_path)
 
 def prepare_splash(size_x, size_y):
-    _splash_image = QPixmap('resources/harbor.png').scaled(size_x, size_y, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    _splash_image = QPixmap(SPLASH_PATH).scaled(size_x, size_y, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     _splash = QSplashScreen(_splash_image)
     return _splash
 
@@ -25,11 +26,11 @@ def main():
     #TODO: Finish splash screen feature
     from time import sleep
 
-    splash = prepare_splash(size_x=450, size_y=450)
+    splash = prepare_splash(size_x=SPLASH_SCREEN_WIDTH, size_y=SPLASH_SCREEN_HEIGHT)
     splash.show()
     sleep(3)
     # Set the app icon to show up in the taskbar and window - on Windows
-    icon_path = resource_path('resources/icons/harbor.ico')
+    icon_path = resource_path(ICON_PATH)
     app.setWindowIcon(QIcon(icon_path))
 
     window = ExplorerWindow()
