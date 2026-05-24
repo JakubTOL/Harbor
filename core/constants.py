@@ -8,6 +8,6 @@ BREADCRUMB_RENDER_LIMIT = 6
 TRUNCATED_BREADCRUMB_SYMBOL = "..."
 
 ICON_PATH = "resources/icons/harbor.png"
-SPLASH_PATH = "resources/harbor_splash.png"
+SPLASH_PATH = "resources/harbor_splash2.png"
 SPLASH_SCREEN_WIDTH = 450
 SPLASH_SCREEN_HEIGHT = 450
