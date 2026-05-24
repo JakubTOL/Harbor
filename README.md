@@ -53,9 +53,10 @@ project/
 │   │   │   └── explorer_controller.py
 │   │   ├── widgets/     # Modular UI components
 │   │   │   ├── breadcrumb_bar.py
-│   │   │   ├── navigation_toolbar.py
 │   │   │   ├── explorer_tree.py
+│   │   │   ├── file_metadata_panel.py
 │   │   │   ├── finder_column_view.py
+│   │   │   ├── navigation_toolbar.py
 │   │   │   └── status_bar.py
 │   │   └── views/       # Composed/primary UI windows
 │   │       └── explorer_window.py
