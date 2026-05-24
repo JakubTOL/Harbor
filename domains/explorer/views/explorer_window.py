@@ -12,6 +12,7 @@ from domains.explorer.widgets.explorer_tree import ExplorerTree
 from domains.explorer.widgets.finder_column_view import FinderColumnView
 from domains.explorer.widgets.breadcrumb_bar import BreadcrumbBar
 from domains.explorer.widgets.navigation_toolbar import NavigationToolbar
+from domains.explorer.widgets.file_metadata_panel import FileMetadataPanel
 
 
 class ExplorerWindow(QMainWindow):
@@ -89,8 +90,11 @@ class ExplorerWindow(QMainWindow):
         splitter.setStretchFactor(1, 2)
 
         tree_layout.addWidget(splitter)
-        self.tree.clicked.connect(self.show_details_for_index)
 
+        self.metadata_panel = FileMetadataPanel(max_height=32)
+        tree_layout.addWidget(self.metadata_panel)
+
+        self.tree.clicked.connect(self.show_details_for_index)
 
         # FINDER MODE
         finder_page = QWidget()
@@ -104,6 +108,12 @@ class ExplorerWindow(QMainWindow):
         )
 
         finder_layout.addWidget(self.column)
+
+        self.metadata_panel_finder = FileMetadataPanel(max_height=44)
+        finder_layout.addWidget(self.metadata_panel_finder)
+
+        self.column.clicked.connect(self.update_finder_metadata_panel)
+        self.column.doubleClicked.connect(self.update_finder_metadata_panel)
 
         self.stack.addWidget(tree_page)
         self.stack.addWidget(finder_page)
@@ -131,6 +141,7 @@ class ExplorerWindow(QMainWindow):
         self.column.setRootIndex(index)
 
         self.statusBar().showMessage(path)
+        self.metadata_panel.set_path(path)
 
     def show_list_context_menu(self, point):
         """
@@ -145,6 +156,10 @@ class ExplorerWindow(QMainWindow):
         else:  # On blank area: use the current directory displayed in the details pane
             dir_index = self.detail_list.rootIndex()
             self.controller.show_context_menu(self.detail_list, dir_index, point, directory_mode=True)
+
+    def update_finder_metadata_panel(self, index):
+        path = self.fs.model.filePath(index)
+        self.metadata_panel_finder.set_path(path)
 
     # -------------------------
     # VIEW MODES
@@ -172,3 +187,5 @@ class ExplorerWindow(QMainWindow):
             # Optionally set to parent directory or clear
             parent = index.parent()
             self.detail_list.setRootIndex(parent)
+        path = self.fs.model.filePath(index)
+        self.metadata_panel.set_path(path)
