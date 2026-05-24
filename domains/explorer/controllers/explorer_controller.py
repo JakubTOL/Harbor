@@ -3,6 +3,8 @@ from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox
 from PySide6.QtGui import QAction
 import os
 import shutil
+import sys
+import subprocess
 
 
 class ExplorerController:
@@ -116,11 +118,18 @@ class ExplorerController:
             directory_mode (bool): If True, shows directory-only actions.
         """
         menu = QMenu(widget)
+        # Shared actions for both (files and directories):
+        open_native_action = QAction("Open in native", widget)
+        open_native_action.triggered.connect(lambda: self.open_item_in_native(index))
+
         if directory_mode:  # Only show new file/new folder for the current directory
             new_file_action = QAction("New File", widget)
             new_folder_action = QAction("New Folder", widget)
             new_file_action.triggered.connect(lambda: self.create_new_file(index))
             new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
+            # Assemble the menu content
+            menu.addAction(open_native_action)
+            menu.addSeparator()
             menu.addAction(new_file_action)
             menu.addAction(new_folder_action)
         else:  # Show all actions for a file/folder
@@ -132,6 +141,9 @@ class ExplorerController:
             new_file_action.triggered.connect(lambda: self.create_new_file(index))
             new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
             delete_action.triggered.connect(lambda: self.delete_item(index))
+            # Assemble the menu content
+            menu.addAction(open_native_action)
+            menu.addSeparator()
             menu.addAction(rename_action)
             menu.addAction(new_file_action)
             menu.addAction(new_folder_action)
@@ -145,8 +157,36 @@ class ExplorerController:
     # -----------------------------
 
     def open_item_in_native(self, index: int):
-        #TODO: Create a method for file location open in native explorer.
-        pass
+        """
+        Open the selected file or directory in the native file browser.
+        """
+        path = self.fs.file_path(index)
+        # If it's a file, open its parent dir and select the file where possible
+        target_path = path
+        is_file = os.path.isfile(path)
+        if is_file:
+            dir_path = os.path.dirname(path)
+        else:
+            dir_path = path
+
+        try:
+            if sys.platform.startswith("darwin"):
+                # macOS: highlight the item using -R if it's a file
+                if is_file:
+                    subprocess.run(['open', '-R', path], check=True)
+                else:
+                    subprocess.run(['open', dir_path], check=True)
+            elif os.name == "nt":
+                # Windows: explorer with /select, for files
+                if is_file:
+                    subprocess.run(['explorer', '/select,', os.path.normpath(path)], check=True)
+                else:
+                    os.startfile(dir_path)
+            else:
+                # Linux: xdg-open to the folder
+                subprocess.run(['xdg-open', dir_path], check=True)
+        except Exception as e:
+            QMessageBox.critical(self.view, "Error", f"Failed to open in native file browser:\n{e}")
 
     def rename_item(self, index: int):
         """
