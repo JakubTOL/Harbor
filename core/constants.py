@@ -7,7 +7,7 @@ BREADCRUMB_SEPARATOR = ">"
 BREADCRUMB_RENDER_LIMIT = 6
 TRUNCATED_BREADCRUMB_SYMBOL = "..."
 
-ICON_PATH = "resources/icons/harbor.png"
+ICON_PATH = "resources/icons/harbor.ico"
 SPLASH_PATH = "resources/harbor_splash2.png"
 SPLASH_SCREEN_WIDTH = 450
 SPLASH_SCREEN_HEIGHT = 450
