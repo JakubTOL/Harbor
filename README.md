@@ -106,7 +106,7 @@ pip install pyinstaller
 ```
 - Run the converter command from active .venv
 ```bash
-.venv\Scripts\python -m PyInstaller --onefile --windowed --icon=resources/icons/harbor.ico --add-data "resources/icons/harbor.ico;resources/icons" main.py
+.venv\Scripts\python -m PyInstaller --onefile --windowed --icon=resources/icons/harbor.ico --add-data "resources/icons/harbor.ico;resources/icons" --add-data "resources/harbor_splash2.png;resources" main.py
 ```
 
 ---
