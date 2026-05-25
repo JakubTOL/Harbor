@@ -33,7 +33,7 @@ def prepare_splash(size_x: int, size_y: int):
     Returns:
         QSplashScreen: The configured splash screen object.
     """
-    splash_image = QPixmap(SPLASH_PATH).scaled(size_x, size_y, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    splash_image = QPixmap(resource_path(SPLASH_PATH)).scaled(size_x, size_y, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     splash = QSplashScreen(splash_image)
     return splash
 
@@ -78,8 +78,7 @@ class HarborApplication:
         Returns:
             QIcon: The loaded application icon instance.
         """
-        icon_path = resource_path(ICON_PATH)
-        icon = QIcon(icon_path)
+        icon = QIcon(resource_path(ICON_PATH))
         self.app.setWindowIcon(icon)
         return icon
 
