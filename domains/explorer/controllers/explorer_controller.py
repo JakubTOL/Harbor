@@ -170,20 +170,19 @@ class ExplorerController:
             dir_path = path
 
         try:
-            if sys.platform.startswith("darwin"):
-                # macOS: highlight the item using -R if it's a file
+            if sys.platform.startswith("darwin"):  # macOS: highlight the item using -R if it's a file
                 if is_file:
                     subprocess.run(['open', '-R', path], check=True)
                 else:
                     subprocess.run(['open', dir_path], check=True)
-            elif os.name == "nt":
-                # Windows: explorer with /select, for files
-                if is_file:
-                    subprocess.run(['explorer', '/select,', os.path.normpath(path)], check=True)
-                else:
+            elif os.name == "nt":  # Windows: explorer with /select, for files
+                """if is_file:
+                    # subprocess.run(['explorer', '/select,', os.path.normpath(path)], check=True)
                     os.startfile(dir_path)
-            else:
-                # Linux: xdg-open to the folder
+                else:
+                    os.startfile(dir_path)"""
+                os.startfile(dir_path)
+            else:  # Linux: xdg-open to the folder
                 subprocess.run(['xdg-open', dir_path], check=True)
         except Exception as e:
             QMessageBox.critical(self.view, "Error", f"Failed to open in native file browser:\n{e}")
