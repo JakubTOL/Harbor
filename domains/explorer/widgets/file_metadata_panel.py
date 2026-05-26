@@ -30,13 +30,17 @@ class FileMetadataPanel(QWidget):
             }
         """)
 
+    @staticmethod
+    def get_mod_stamp(_stat):
+        return time.strftime("%Y-%m-%d %H:%M", time.localtime(_stat.st_mtime))
+
     def set_path(self, path):
         if not os.path.exists(path):
             self.label.setText("--")
             return
         stat = os.stat(path)
         size = stat.st_size
-        mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(stat.st_mtime))
+        mod_stamp = self.get_mod_stamp(stat)
         # Show GB/MB/KB for larger files, else bytes
         def human_size(sz):
             for unit in ['B','KB','MB','GB','TB']:
@@ -44,5 +48,5 @@ class FileMetadataPanel(QWidget):
                     return f"{sz:.0f} {unit}"
                 sz /= 1024
             return f"{sz:.0f} PB"
-        info = f"""<b>Size:</b> {human_size(size)} &nbsp;&nbsp; <b>Modified:</b> {mtime}"""
+        info = f"""<b>Size:</b> {human_size(size)} &nbsp;&nbsp; <b>Modified:</b> {mod_stamp}"""
         self.label.setText(info)
