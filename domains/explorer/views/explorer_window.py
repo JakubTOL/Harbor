@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt
 
 from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 
+from domains.application.favorites_manager import FavoritesManager
+
 from domains.explorer.models.explorer_state import ExplorerState
 from domains.explorer.services.filesystem_service import FileSystemService
 from domains.explorer.controllers.explorer_controller import ExplorerController
@@ -32,11 +34,13 @@ class ExplorerWindow(QMainWindow):
 
         self.state = ExplorerState(current_path=str(Path.home()))
         self.fs = FileSystemService()
+        self.favorites_manager = FavoritesManager()
 
         self.controller = ExplorerController(
             self.state,
             self.fs,
-            self
+            self,
+            self.favorites_manager
         )
 
         self._build_ui()
@@ -121,7 +125,8 @@ class ExplorerWindow(QMainWindow):
         layout.addWidget(self.stack)
 
         # Toolbar
-        self.addToolBar(NavigationToolbar(self, self.controller))
+        self.toolbar = NavigationToolbar(self, self.controller, self.favorites_manager)  # Store as attribute for update
+        self.addToolBar(self.toolbar)
 
     # -------------------------
     # CALLED BY CONTROLLER
@@ -158,8 +163,22 @@ class ExplorerWindow(QMainWindow):
             self.controller.show_context_menu(self.detail_list, dir_index, point, directory_mode=True)
 
     def update_finder_metadata_panel(self, index):
+        """
+        Update the finder metadata panel.
+
+        Args:
+            index: The model index for the directory.
+        """
         path = self.fs.model.filePath(index)
         self.metadata_panel_finder.set_path(path)
+
+    def update_favorites_menu(self):
+        """
+        Update the Favorites menu in the navigation toolbar.
+
+        Called whenever the list of favorites changes.
+        """
+        self.toolbar.update_favorites_menu()
 
     # -------------------------
     # VIEW MODES

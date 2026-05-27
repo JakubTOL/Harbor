@@ -9,7 +9,7 @@ import subprocess
 
 class ExplorerController:
 
-    def __init__(self, state, fs_service, view):
+    def __init__(self, state, fs_service, view, favorites_manger):
         """
         Initialize the ExplorerController.
 
@@ -21,6 +21,7 @@ class ExplorerController:
         self.state = state
         self.fs = fs_service
         self.view = view
+        self.favorites = favorites_manger
 
     # -----------------------------
     # NAVIGATION CORE
@@ -125,6 +126,19 @@ class ExplorerController:
         copy_as_path_action = QAction("Copy as path", widget)
         copy_as_path_action.triggered.connect(lambda : self.copy_item_as_path(index))
 
+        path = self.fs.file_path(index)
+        if self.fs.is_dir(path):
+            menu.addSeparator()
+            if self.favorites.is_favorite(path):
+                remove_fav_action = QAction("Remove from Favorites", widget)
+                remove_fav_action.triggered.connect(lambda: self.remove_from_favorites(path))
+                menu.addAction(remove_fav_action)
+            else:
+                add_fav_action = QAction("Add to Favorites", widget)
+                add_fav_action.triggered.connect(lambda: self.add_to_favorites(path))
+                menu.addAction(add_fav_action)
+            menu.addSeparator()
+
         if directory_mode:  # Only show new file/new folder for the current directory
             new_file_action = QAction("New File", widget)
             new_folder_action = QAction("New Folder", widget)
@@ -152,7 +166,7 @@ class ExplorerController:
             menu.addAction(rename_action)
             menu.addAction(new_file_action)
             menu.addAction(new_folder_action)
-            menu.addSeparator()  # Add a visual separator for the section
+            menu.addSeparator()
             menu.addAction(delete_action)
 
         menu.exec(widget.viewport().mapToGlobal(point))
@@ -313,3 +327,29 @@ class ExplorerController:
                 self.refresh()
             except Exception as e:
                 QMessageBox.critical(self.view, "Delete Failed", str(e))
+
+    # -----------------------------
+    # FAVORITES
+    # -----------------------------
+
+    def add_to_favorites(self, path):
+        """
+        Add the specified directory path to favorites.
+
+        Args:
+            path (str): Directory path to add.
+        """
+        self.favorites.add_favorite(path)
+        if hasattr(self.view, "update_favorites_menu"):
+            self.view.update_favorites_menu()  # Method you'll add in the view
+
+    def remove_from_favorites(self, path):
+        """
+        Remove the specified directory path from favorites.
+
+        Args:
+            path (str): Directory path to remove.
+        """
+        self.favorites.remove_favorite(path)
+        if hasattr(self.view, "update_favorites_menu"):
+            self.view.update_favorites_menu()

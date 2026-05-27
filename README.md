@@ -61,7 +61,8 @@ project/
 │   │   └── views/       # Composed/primary UI windows
 │   │       └── explorer_window.py
 │   └── application/        # Centralized application startup
-|       └── app.py/      # Application logic
+|       ├── app.py/      # Application logic
+|       └── favorites_manager.py/      # Favorites directories manager
 │ 
 ├── resources/        # Folder for media storage
 │   └── icons/        # files with .ico files
