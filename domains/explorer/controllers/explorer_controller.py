@@ -1,6 +1,7 @@
-from pathlib import Path
 from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox, QApplication
 from PySide6.QtGui import QAction
+from pathlib import Path
+from functools import partial
 import os
 import shutil
 import sys
@@ -108,7 +109,7 @@ class ExplorerController:
     # CONTEXT MENU
     # -----------------------------
 
-    def show_context_menu(self, widget, index, point, directory_mode: bool=False):
+    def show_context_menu(self, widget, index, point, directory_mode: bool = False):
         """
         Display the context menu for a file or directory.
 
@@ -118,56 +119,83 @@ class ExplorerController:
             point: The QPoint to display the menu.
             directory_mode (bool): If True, shows directory-only actions.
         """
+
         menu = QMenu(widget)
-        # Shared actions for both (files and directories):
-        open_native_action = QAction("Open in native", widget)
-        open_native_action.triggered.connect(lambda: self.open_item_in_native(index))
-
-        copy_as_path_action = QAction("Copy as path", widget)
-        copy_as_path_action.triggered.connect(lambda : self.copy_item_as_path(index))
-
         path = self.fs.file_path(index)
+
+        def make_action(text, callback):
+            action = QAction(text, widget)
+            action.triggered.connect(callback)
+            return action
+
+        # ------------------------------------------------------------------
+        # Action registry
+        # ------------------------------------------------------------------
+
+        actions = {
+            "open_native": make_action("Open in native", partial(self.open_item_in_native, index)),
+            "copy_path": make_action("Copy as path", partial(self.copy_item_as_path, index)),
+            "rename": make_action("Rename", partial(self.rename_item, index)),
+            "new_file": make_action( "New File", partial(self.create_new_file, index)),
+            "new_folder": make_action("New Folder", partial(self.create_new_folder, index)),
+            "delete": make_action("Delete",partial(self.delete_item, index)),
+        }
+
+        # ------------------------------------------------------------------
+        # Favorites section (directories only)
+        # ------------------------------------------------------------------
+
         if self.fs.is_dir(path):
+            is_favorite = self.favorites.is_favorite(path)
+
+            favorite_action = make_action(
+                "Remove from Favorites" if is_favorite else "Add to Favorites",
+                partial(
+                    self.remove_from_favorites if is_favorite
+                    else self.add_to_favorites,
+                    path
+                )
+            )
+
             menu.addSeparator()
-            if self.favorites.is_favorite(path):
-                remove_fav_action = QAction("Remove from Favorites", widget)
-                remove_fav_action.triggered.connect(lambda: self.remove_from_favorites(path))
-                menu.addAction(remove_fav_action)
-            else:
-                add_fav_action = QAction("Add to Favorites", widget)
-                add_fav_action.triggered.connect(lambda: self.add_to_favorites(path))
-                menu.addAction(add_fav_action)
+            menu.addAction(favorite_action)
             menu.addSeparator()
 
-        if directory_mode:  # Only show new file/new folder for the current directory
-            new_file_action = QAction("New File", widget)
-            new_folder_action = QAction("New Folder", widget)
-            new_file_action.triggered.connect(lambda: self.create_new_file(index))
-            new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
-            # Assemble the menu content
-            menu.addAction(open_native_action)
-            menu.addAction(copy_as_path_action)
-            menu.addSeparator()
-            menu.addAction(new_file_action)
-            menu.addAction(new_folder_action)
-        else:  # Show all actions for a file/folder
-            rename_action = QAction("Rename", widget)
-            new_file_action = QAction("New File", widget)
-            new_folder_action = QAction("New Folder", widget)
-            delete_action = QAction("Delete", widget)
-            rename_action.triggered.connect(lambda: self.rename_item(index))
-            new_file_action.triggered.connect(lambda: self.create_new_file(index))
-            new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
-            delete_action.triggered.connect(lambda: self.delete_item(index))
-            # Assemble the menu content
-            menu.addAction(open_native_action)
-            menu.addAction(copy_as_path_action)
-            menu.addSeparator()
-            menu.addAction(rename_action)
-            menu.addAction(new_file_action)
-            menu.addAction(new_folder_action)
-            menu.addSeparator()
-            menu.addAction(delete_action)
+        # ------------------------------------------------------------------
+        # Menu layouts
+        # None = separator
+        # ------------------------------------------------------------------
+
+        directory_layout = [
+            "open_native",
+            "copy_path",
+            None,
+            "new_file",
+            "new_folder",
+        ]
+
+        default_layout = [
+            "open_native",
+            "copy_path",
+            None,
+            "rename",
+            "new_file",
+            "new_folder",
+            None,
+            "delete",
+        ]
+
+        layout = directory_layout if directory_mode else default_layout
+
+        # ------------------------------------------------------------------
+        # Render menu
+        # ------------------------------------------------------------------
+
+        for item in layout:
+            if item is None:
+                menu.addSeparator()
+            else:
+                menu.addAction(actions[item])
 
         menu.exec(widget.viewport().mapToGlobal(point))
 
