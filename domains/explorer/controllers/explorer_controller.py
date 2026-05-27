@@ -122,6 +122,9 @@ class ExplorerController:
         open_native_action = QAction("Open in native", widget)
         open_native_action.triggered.connect(lambda: self.open_item_in_native(index))
 
+        copy_as_path_action = QAction("Copy as path", widget)
+        copy_as_path_action.triggered.connect(lambda : self.copy_item_as_path(index))
+
         if directory_mode:  # Only show new file/new folder for the current directory
             new_file_action = QAction("New File", widget)
             new_folder_action = QAction("New Folder", widget)
@@ -129,6 +132,7 @@ class ExplorerController:
             new_folder_action.triggered.connect(lambda: self.create_new_folder(index))
             # Assemble the menu content
             menu.addAction(open_native_action)
+            menu.addAction(copy_as_path_action)
             menu.addSeparator()
             menu.addAction(new_file_action)
             menu.addAction(new_folder_action)
@@ -143,6 +147,7 @@ class ExplorerController:
             delete_action.triggered.connect(lambda: self.delete_item(index))
             # Assemble the menu content
             menu.addAction(open_native_action)
+            menu.addAction(copy_as_path_action)
             menu.addSeparator()
             menu.addAction(rename_action)
             menu.addAction(new_file_action)
@@ -186,6 +191,26 @@ class ExplorerController:
                 subprocess.run(['xdg-open', dir_path], check=True)
         except Exception as e:
             QMessageBox.critical(self.view, "Error", f"Failed to open in native file browser:\n{e}")
+
+    def copy_item_as_path(self, index):
+        """
+        Copy focused item path.
+        """
+        path = self.fs.file_path(index)
+
+        try:
+            from PySide6.QtWidgets import QApplication
+
+            clipboard = QApplication.clipboard()
+            clipboard.setText(path)
+
+        except Exception as e:
+            QMessageBox.critical(
+                self.view,
+                "Error",
+                f"Failed to copy item path to clipboard:\n{e}"
+            )
+
 
     def rename_item(self, index: int):
         """
