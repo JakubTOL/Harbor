@@ -1,5 +1,5 @@
 from pathlib import Path
-from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QMenu, QInputDialog, QMessageBox, QApplication
 from PySide6.QtGui import QAction
 import os
 import shutil
@@ -164,6 +164,9 @@ class ExplorerController:
     def open_item_in_native(self, index: int):
         """
         Open the selected file or directory in the native file browser.
+
+        Args:
+            index (int): The model index for the item to open.
         """
         path = self.fs.file_path(index)
         # If it's a file, open its parent dir and select the file where possible
@@ -192,15 +195,16 @@ class ExplorerController:
         except Exception as e:
             QMessageBox.critical(self.view, "Error", f"Failed to open in native file browser:\n{e}")
 
-    def copy_item_as_path(self, index):
+    def copy_item_as_path(self, index: int):
         """
-        Copy focused item path.
+        Copy focused item path to system clipboard.
+
+        Args:
+            index (int): The model index for the item to copy.
         """
         path = self.fs.file_path(index)
 
         try:
-            from PySide6.QtWidgets import QApplication
-
             clipboard = QApplication.clipboard()
             clipboard.setText(path)
 
