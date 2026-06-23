@@ -87,6 +87,8 @@ class ExplorerWindow(QMainWindow):
         self.detail_list.setModel(self.fs.model)
         self.detail_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.detail_list.customContextMenuRequested.connect(self.show_list_context_menu)
+        self.detail_list.doubleClicked.connect(self.controller.on_double_clicked)
+        # self.detail_list.clicked.connect(self.show_details_for_index)  # gets buggy with macOS touchapd
 
         splitter.addWidget(self.tree)
         splitter.addWidget(self.detail_list)
