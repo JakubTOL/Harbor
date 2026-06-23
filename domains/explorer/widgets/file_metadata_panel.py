@@ -34,19 +34,42 @@ class FileMetadataPanel(QWidget):
     def get_mod_stamp(_stat):
         return time.strftime("%Y-%m-%d %H:%M", time.localtime(_stat.st_mtime))
 
+    @staticmethod
+    def get_folder_size(path):
+        """
+        Recursively calculate the total size of all files in a directory.
+        """
+        total_size = 0
+        try:
+            for entry in os.scandir(path):
+                if entry.is_file(follow_symlinks=False):
+                    total_size += entry.stat(follow_symlinks=False).st_size
+                elif entry.is_dir(follow_symlinks=False):
+                    total_size += FileMetadataPanel.get_folder_size(entry.path)
+        except (OSError, PermissionError):
+            pass  # Handle permission errors gracefully
+        return total_size
+
     def set_path(self, path):
         if not os.path.exists(path):
             self.label.setText("--")
             return
         stat = os.stat(path)
-        size = stat.st_size
+
+        # For directories, calculate total size of all nested files
+        if os.path.isdir(path):
+            size = self.get_folder_size(path)
+        else:
+            size = stat.st_size
+
         mod_stamp = self.get_mod_stamp(stat)
         # Show GB/MB/KB for larger files, else bytes
         def human_size(sz):
-            for unit in ['B','KB','MB','GB','TB']:
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
                 if sz < 1024:
                     return f"{sz:.0f} {unit}"
                 sz /= 1024
             return f"{sz:.0f} PB"
+
         info = f"""<b>Size:</b> {human_size(size)} &nbsp;&nbsp; <b>Modified:</b> {mod_stamp}"""
         self.label.setText(info)
