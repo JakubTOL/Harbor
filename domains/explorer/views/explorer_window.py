@@ -1,6 +1,7 @@
 from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence
 
 from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 
@@ -210,3 +211,38 @@ class ExplorerWindow(QMainWindow):
             self.detail_list.setRootIndex(parent)
         path = self.fs.model.filePath(index)
         self.metadata_panel.set_path(path)
+
+    # -------------------------
+    # KEYBOARD SHORTCUTS
+    # -------------------------
+    def keyPressEvent(self, event):
+        """
+        Handle keyboard shortcuts globally for the explorer window.
+
+        Args:
+            event: The QKeyEvent object.
+        """
+        # Check for Ctrl+1 shortcut
+        if event.key() == Qt.Key_1 and event.modifiers() == Qt.ControlModifier:
+            self.open_selected_in_native()
+            return
+
+        # Call parent implementation for other shortcuts
+        super().keyPressEvent(event)
+
+    def open_selected_in_native(self):
+        """
+        Open the currently selected item in the native file browser.
+        Determines which view is active and gets the selected index.
+        """
+        # Get the currently active view (tree or column view)
+        current_index = self.stack.currentIndex()
+
+        if current_index == 0:  # Tree view is active
+            selected = self.tree.selectedIndexes()
+            if selected:
+                self.controller.open_item_in_native(selected[0])
+        elif current_index == 1:  # Finder column view is active
+            selected = self.column.selectedIndexes()
+            if selected:
+                self.controller.open_item_in_native(selected[0])
