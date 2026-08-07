@@ -7,6 +7,9 @@ import shutil
 import sys
 import subprocess
 
+from domains.explorer.services.search_service import SearchService
+from domains.explorer.models.search_results import SearchResults
+
 
 class ExplorerController:
 
@@ -23,6 +26,8 @@ class ExplorerController:
         self.fs = fs_service
         self.view = view
         self.favorites = favorites_manger
+        self.search_service = SearchService()
+        self.search_results = SearchResults(query="")
 
     # -----------------------------
     # NAVIGATION CORE
@@ -381,3 +386,55 @@ class ExplorerController:
         self.favorites.remove_favorite(path)
         if hasattr(self.view, "update_favorites_menu"):
             self.view.update_favorites_menu()
+
+    # -----------------------------
+    # SEARCH
+    # -----------------------------
+
+    def perform_search(self, query: str) -> None:
+        """
+        Initiate a file search from the search widget.
+
+        Args:
+            query: Search term entered in search box
+        """
+        # Handle empty query
+        if not query.strip():
+            self.search_results.clear()
+            self.view.display_search_results([])
+            return
+
+        # Initialize new search
+        self.search_results = SearchResults(query=query, is_searching=True)
+
+        # Start background search (worker emits signals to slots below)
+        self.search_service.search_files(
+            root_path=self.state.current_path,
+            query=query,
+            on_result=self._on_search_result,
+            on_complete=self._on_search_complete
+        )
+
+    def _on_search_result(self, path: str) -> None:
+        """
+        Called when a search result is found (runs on main thread via signal).
+
+        Args:
+            path: Full file path that matches search query
+        """
+        if not path:
+            return
+
+        self.search_results.add_result(path)
+
+        # Update UI every 10 results to avoid lag
+        if len(self.search_results.results) % 10 == 0:
+            self.view.display_search_results(self.search_results.results[:100])
+
+    def _on_search_complete(self) -> None:
+        """
+        Called when search finishes (runs on main thread via signal).
+        Updates UI with final results.
+        """
+        self.search_results.is_searching = False
+        self.view.display_search_results(self.search_results.results[:100])

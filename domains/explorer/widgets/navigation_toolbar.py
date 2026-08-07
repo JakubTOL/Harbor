@@ -1,18 +1,19 @@
 import os
-from PySide6.QtWidgets import QToolBar, QPushButton, QMenu, QToolButton
+from PySide6.QtWidgets import QToolBar, QPushButton, QMenu, QToolButton, QWidget, QSizePolicy
 from PySide6.QtGui import QAction
+from domains.explorer.widgets.search_widget import SearchWidget
 
 
 class NavigationToolbar(QToolBar):
 
     def __init__(self, window, controller, favorites_manager):
         """
-        Initialize the navigation toolbar with navigation actions and favorites menu..
+        Initialize the navigation toolbar with navigation actions and favorites menu.
 
         Args:
             window: The parent main window.
             controller: The ExplorerController for navigation logic.
-            favorites_manager: The FavoritesManger instance for favorites operations.
+            favorites_manager: The FavoritesManager instance for favorites operations.
         """
         super().__init__("Navigation")
 
@@ -35,6 +36,9 @@ class NavigationToolbar(QToolBar):
         self.addAction(home)
         self.addAction(refresh)
 
+        # Add separator
+        self.addSeparator()
+
         # -----------------------------
         # FAVORITES MENU
         # -----------------------------
@@ -48,12 +52,31 @@ class NavigationToolbar(QToolBar):
 
         self.update_favorites_menu()
 
+        # Add separator
+        self.addSeparator()
+
         # -----------------------------
         # VIEW MODE SWITCH
         # -----------------------------
 
         self.addWidget(QPushButton("Tree", clicked=lambda: window.set_mode(0)))
         self.addWidget(QPushButton("Finder", clicked=lambda: window.set_mode(1)))
+
+        # Add spacer to push search box to the right
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.addWidget(spacer)
+
+        # Add separator
+        self.addSeparator()
+
+        # -----------------------------
+        # SEARCH BOX
+        # -----------------------------
+
+        self.search_widget = SearchWidget(self)
+        self.search_widget.search_triggered.connect(controller.perform_search)
+        self.addWidget(self.search_widget)
 
     def update_favorites_menu(self):
         """

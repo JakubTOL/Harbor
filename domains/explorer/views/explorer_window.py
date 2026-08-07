@@ -1,7 +1,9 @@
 from pathlib import Path
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView,
+                               QDockWidget, QListWidget, QListWidgetItem)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
+import os
 
 from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 
@@ -131,6 +133,17 @@ class ExplorerWindow(QMainWindow):
         self.toolbar = NavigationToolbar(self, self.controller, self.favorites_manager)  # Store as attribute for update
         self.addToolBar(self.toolbar)
 
+        # --------------------------
+        # SEARCH RESULTS DOCK
+        # --------------------------
+
+        self.search_results_dock = QDockWidget("Search Results", self)
+        self.search_results_list = QListWidget()
+        self.search_results_list.itemClicked.connect(self._on_search_result_clicked)
+        self.search_results_dock.setWidget(self.search_results_list)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.search_results_dock)
+        self.search_results_dock.hide()  # Hidden by default
+
     # -------------------------
     # CALLED BY CONTROLLER
     # -------------------------
@@ -246,3 +259,44 @@ class ExplorerWindow(QMainWindow):
             selected = self.column.selectedIndexes()
             if selected:
                 self.controller.open_item_in_native(selected[0])
+
+    def display_search_results(self, results: list) -> None:
+        """
+        Display search results in the results panel.
+
+        Args:
+            results: List of file paths matching search
+        """
+        self.search_results_list.clear()
+
+        if not results:
+            self.search_results_dock.hide()
+            return
+
+        self.search_results_dock.show()
+
+        for path in results:
+            item = QListWidgetItem(path)
+            item.setData(Qt.UserRole, path)  # Store full path
+            self.search_results_list.addItem(item)
+
+    def _on_search_result_clicked(self, item: QListWidgetItem) -> None:
+        """
+        Handle clicking on a search result.
+        Navigates to the file's parent directory.
+
+        Args:
+            item: The clicked list widget item
+        """
+        path = item.data(Qt.UserRole)
+
+        if not path or not os.path.exists(path):
+            return
+
+        # If it's a file, navigate to its parent directory
+        if os.path.isfile(path):
+            parent_path = os.path.dirname(path)
+            self.controller.set_current_path(parent_path)
+        else:
+            # If it's a directory, navigate to it
+            self.controller.set_current_path(path)
