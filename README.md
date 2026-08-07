@@ -46,9 +46,11 @@ project/
 ├── domains/
 │   └── explorer/        # Main functional domain
 │   │   ├── models/      # State/data structures
-│   │   │   └── explorer_state.py
+│   │   │   ├── explorer_state.py
+│   │   │   └── search_results.py
 │   │   ├── services/    # Business logic, e.g., filesystem operations
-│   │   │   └── filesystem_service.py
+│   │   │   ├── filesystem_service.py
+│   │   │   └── search_service.py
 │   │   ├── controllers/ # Interface between UI and logic
 │   │   │   └── explorer_controller.py
 │   │   ├── widgets/     # Modular UI components
@@ -57,6 +59,7 @@ project/
 │   │   │   ├── file_metadata_panel.py
 │   │   │   ├── finder_column_view.py
 │   │   │   ├── navigation_toolbar.py
+│   │   │   ├── search_widget.py
 │   │   │   └── status_bar.py
 │   │   └── views/       # Composed/primary UI windows
 │   │       └── explorer_window.py
