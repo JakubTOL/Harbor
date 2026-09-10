@@ -1,197 +1,181 @@
 from pathlib import Path
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView,
+from PySide6.QtWidgets import (QMainWindow, QTabWidget, QWidget, QVBoxLayout, QDockWidget,
                                QListWidget, QListWidgetItem)
 from PySide6.QtCore import Qt
 import os
 
-from domains.explorer.models.explorer_state import ExplorerState
-from domains.explorer.services.filesystem_service import FileSystemService
-from domains.explorer.controllers.explorer_controller import ExplorerController
+from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 
-from domains.explorer.widgets.explorer_tree import ExplorerTree
-from domains.explorer.widgets.finder_column_view import FinderColumnView
-from domains.explorer.widgets.breadcrumb_bar import BreadcrumbBar
-from domains.explorer.widgets.file_metadata_panel import FileMetadataPanel
+from domains.application.favorites_manager import FavoritesManager
+
+from domains.explorer.views.explorer_tab import ExplorerTab
+
+from domains.explorer.widgets.navigation_toolbar import NavigationToolbar
 
 
-class ExplorerTab(QWidget):
-    """
-    A single tab containing a full explorer view (breadcrumbs, tree/finder, metadata).
-    This object acts as the 'view' passed to ExplorerController.
-    """
+class ExplorerWindow(QMainWindow):
 
-    def __init__(self, parent_window, initial_path: str, favorites_manager):
+    def __init__(self):
         """
-        parent_window: the main ExplorerWindow instance (used for shared UI like search results)
-        initial_path: starting directory for this tab
-        favorites_manager: shared FavoritesManager instance
+        Initialize the explorer main window with tab support.
         """
-        super().__init__(parent_window)
-        self.parent_window = parent_window
-        self.initial_path = initial_path or str(Path.home())
-        self.favorites_manager = favorites_manager
+        super().__init__()
 
-        # Per-tab model/state/controller
-        self.state = ExplorerState(current_path=self.initial_path)
-        self.fs = FileSystemService()
-        self.controller = ExplorerController(
-            self.state,
-            self.fs,
-            self,
-            self.favorites_manager
-        )
+        self.setWindowTitle(APP_NAME)
+        self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
-        self._build_ui()
-        # Navigate to initial path
-        self.controller.set_current_path(self.state.current_path)
+        # Shared favorites manager
+        self.favorites_manager = FavoritesManager()
 
-    def _build_ui(self):
-        root = QWidget()
-        # We'll keep self as the root for the tab
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # Tab widget as central area
+        self.tabs = QTabWidget()
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self._on_tab_close_requested)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.setCentralWidget(self.tabs)
 
-        # Breadcrumb
-        self.breadcrumb = BreadcrumbBar(self.controller.set_current_path)
-        layout.addWidget(self.breadcrumb)
+        # choose tab naming mode: "iterative" or "basename"
+        self.tab_naming_mode = "basename"
 
-        # Stack (tree/finder)
-        self.stack = QStackedWidget()
+        # Toolbar - pass window to toolbar so it can call back to active tab
+        self.toolbar = NavigationToolbar(self, self.favorites_manager)
+        self.addToolBar(self.toolbar)
 
-        # TREE MODE
-        tree_page = QWidget()
-        tree_layout = QVBoxLayout(tree_page)
+        # SEARCH RESULTS DOCK (shared)
+        self.search_results_dock = QDockWidget("Search Results", self)
+        self.search_results_list = QListWidget()
+        self.search_results_list.itemClicked.connect(self._on_search_result_clicked)
+        self.search_results_dock.setWidget(self.search_results_list)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.search_results_dock)
+        self.search_results_dock.hide()  # Hidden by default
 
-        splitter = QSplitter(Qt.Horizontal)
+        # Create initial tab at home directory
+        initial_path = str(Path.home())
+        self.create_new_tab(initial_path)
 
-        self.tree = ExplorerTree(
-            self.fs.model,
-            self.controller.on_tree_clicked,
-            self.controller
-        )
-        self.tree.setMinimumWidth(300)
+    # -------- Tab management --------
 
-        # SECOND COLUMN WIDGET: QListView as before
-        self.detail_list = QListView()
-        self.detail_list.setModel(self.fs.model)
-        self.detail_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.detail_list.customContextMenuRequested.connect(self.show_list_context_menu)
-        self.detail_list.doubleClicked.connect(self.controller.on_double_clicked)
-
-        splitter.addWidget(self.tree)
-        splitter.addWidget(self.detail_list)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 2)
-
-        tree_layout.addWidget(splitter)
-
-        self.metadata_panel = FileMetadataPanel(max_height=32)
-        tree_layout.addWidget(self.metadata_panel)
-
-        self.tree.clicked.connect(self.show_details_for_index)
-
-        # FINDER MODE
-        finder_page = QWidget()
-        finder_layout = QVBoxLayout(finder_page)
-
-        self.column = FinderColumnView(
-            self.fs.model,
-            self.controller.on_column_clicked,
-            self.controller.on_double_clicked,
-            self.controller
-        )
-
-        finder_layout.addWidget(self.column)
-
-        self.metadata_panel_finder = FileMetadataPanel(max_height=44)
-        finder_layout.addWidget(self.metadata_panel_finder)
-
-        self.column.clicked.connect(self.update_finder_metadata_panel)
-        self.column.doubleClicked.connect(self.update_finder_metadata_panel)
-
-        self.stack.addWidget(tree_page)
-        self.stack.addWidget(finder_page)
-
-        layout.addWidget(self.stack)
-
-    # Methods expected by the controller (previously in ExplorerWindow)
-
-    def update_path(self, index, path: str):
+    def create_new_tab(self, path: str = None, title: str = None):
         """
-        Update the view and UI to reflect the new path for this tab.
+        Create a new explorer tab. If path is None uses home directory.
+        Uses basename naming mode: tab label = os.path.basename(path) or full path.
         """
-        self.breadcrumb.set_path(path)
+        path = path or str(Path.home())
 
-        self.tree.setRootIndex(index)
-        self.column.setRootIndex(index)
-
-        # If the main window has a status bar, show the current path
-        if hasattr(self.parent_window, "statusBar"):
-            self.parent_window.statusBar().showMessage(path)
-
-        self.metadata_panel.set_path(path)
-
-        # Notify main window so it can update the tab title/tooltip if needed
-        if hasattr(self.parent_window, "update_tab_title_for_widget"):
-            self.parent_window.update_tab_title_for_widget(self, path)
-
-    def show_list_context_menu(self, point):
-        index = self.detail_list.indexAt(point)
-        if index.isValid():
-            self.controller.show_context_menu(self.detail_list, index, point, directory_mode=False)
+        # Decide title: explicit title wins, otherwise basename of path
+        if title is None:
+            tab_title = os.path.basename(path) or path
         else:
-            dir_index = self.detail_list.rootIndex()
-            self.controller.show_context_menu(self.detail_list, dir_index, point, directory_mode=True)
+            tab_title = title
 
-    def update_finder_metadata_panel(self, index):
-        path = self.fs.model.filePath(index)
-        self.metadata_panel_finder.set_path(path)
+        tab = ExplorerTab(self, path, self.favorites_manager)
+        idx = self.tabs.addTab(tab, tab_title)
+        # Store full path as tooltip so user can see the complete location
+        self.tabs.setTabToolTip(idx, path)
+        self.tabs.setCurrentIndex(idx)
+
+    def _on_tab_close_requested(self, index: int):
+        # Prevent closing last tab - keep at least one
+        if self.tabs.count() <= 1:
+            return
+        self.tabs.removeTab(index)
+
+    def close_current_tab(self):
+        idx = self.tabs.currentIndex()
+        if idx >= 0 and self.tabs.count() > 1:
+            self.tabs.removeTab(idx)
+
+    def _on_tab_changed(self, index: int):
+        """
+        Called when user switches tab. Update toolbar/favorites status if needed.
+        """
+        # Optionally, update window title/status bar
+        active = self.get_active_tab()
+        if active:
+            # Update status bar message to reflect active tab path
+            if hasattr(self, "statusBar"):
+                # Show current_path stored in tab.state
+                self.statusBar().showMessage(active.state.current_path)
+
+        # Refresh favorites menu so it shows actions that target the active tab
+        self.update_favorites_menu()
+
+    def update_tab_title_for_widget(self, tab_widget, path: str):
+        """
+        Called by an ExplorerTab when its path changes.
+        Updates tab text based on tab_naming_mode and always updates tooltip.
+        """
+        idx = self.tabs.indexOf(tab_widget)
+        if idx == -1:
+            return
+
+        # Update tooltip (always show full path)
+        self.tabs.setTabToolTip(idx, path)
+
+        # Update visible label only for basename mode (iterative keeps original Tab N).
+        if self.tab_naming_mode == "basename":
+            title = os.path.basename(path) or path
+            self.tabs.setTabText(idx, title)
+
+    def get_active_tab(self):
+        widget = self.tabs.currentWidget()
+        return widget
+
+    def get_active_controller(self):
+        tab = self.get_active_tab()
+        if tab and hasattr(tab, "controller"):
+            return tab.controller
+        return None
+
+    # -------- Delegation for toolbar actions and search --------
+
+    def perform_search(self, query: str):
+        """
+        Called by the toolbar/search widget; delegate to active tab's controller.
+        """
+        ctrl = self.get_active_controller()
+        if ctrl:
+            ctrl.perform_search(query)
+
+    def display_search_results(self, results: list) -> None:
+        """
+        Render results in shared search dock. Clicks are handled and delegated to the active tab.
+        """
+        self.search_results_list.clear()
+
+        if not results:
+            self.search_results_dock.hide()
+            return
+
+        self.search_results_dock.show()
+
+        for path in results:
+            item = QListWidgetItem(path)
+            item.setData(Qt.UserRole, path)
+            self.search_results_list.addItem(item)
+
+    def _on_search_result_clicked(self, item: QListWidgetItem) -> None:
+        path = item.data(Qt.UserRole)
+
+        if not path or not os.path.exists(path):
+            return
+
+        # If it's a file, navigate to its parent directory for the active tab
+        ctrl = self.get_active_controller()
+        if not ctrl:
+            return
+
+        if os.path.isfile(path):
+            parent_path = os.path.dirname(path)
+            ctrl.set_current_path(parent_path)
+        else:
+            ctrl.set_current_path(path)
+
+    # -------- Favorites menu update (toolbar owned) --------
 
     def update_favorites_menu(self):
         """
-        Called by controller (when favorites change) to refresh main toolbar favorites.
-        Delegate to parent window which owns the toolbar.
+        Refresh the navigation toolbar favorites menu (used after changes).
         """
-        if hasattr(self.parent_window, "update_favorites_menu"):
-            self.parent_window.update_favorites_menu()
-
-    def open_selected_in_native(self):
-        """
-        Called by parent window when global 'open in native' or shortcut is triggered.
-        Determine selection in this tab and forward to controller.
-        """
-        current_index = self.stack.currentIndex()
-        if current_index == 0:  # tree
-            selected = self.tree.selectedIndexes()
-            if selected:
-                self.controller.open_item_in_native(selected[0])
-        elif current_index == 1:
-            selected = self.column.selectedIndexes()
-            if selected:
-                self.controller.open_item_in_native(selected[0])
-
-    # Search results are displayed by the main window's dock; controllers call view.display_search_results()
-    def display_search_results(self, results: list) -> None:
-        """
-        Proxy request to parent main window to render search results.
-        """
-        if hasattr(self.parent_window, "display_search_results"):
-            self.parent_window.display_search_results(results)
-
-    def set_mode(self, index: int):
-        """
-        Switch tree/finder for this tab.
-        """
-        self.stack.setCurrentIndex(index)
-
-    def show_details_for_index(self, index):
-        """
-        Similar to ExplorerWindow.show_details_for_index but per-tab.
-        """
-        if self.fs.model.isDir(index):
-            self.detail_list.setRootIndex(index)
-        else:
-            parent = index.parent()
-            self.detail_list.setRootIndex(parent)
-        path = self.fs.model.filePath(index)
-        self.metadata_panel.set_path(path)
+        if hasattr(self.toolbar, "update_favorites_menu"):
+            self.toolbar.update_favorites_menu()
