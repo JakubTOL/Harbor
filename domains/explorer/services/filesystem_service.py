@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 from PySide6.QtWidgets import QFileSystemModel, QMessageBox
+from pathlib import Path
 
 
 class FileSystemService:
@@ -9,9 +10,11 @@ class FileSystemService:
     def __init__(self):
         """
         Initialize the file system service with a QFileSystemModel.
+        Avoid calling setRootPath('') which can trigger a heavy scan of filesystem roots.
         """
         self.model = QFileSystemModel()
-        self.model.setRootPath("")
+        # Use the user's home directory as a reasonable default root to avoid scanning the entire FS.
+        self.model.setRootPath(str(Path.home()))
 
     def index(self, path: str):
         """
