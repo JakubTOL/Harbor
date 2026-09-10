@@ -1,13 +1,8 @@
 from pathlib import Path
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView,
-                               QDockWidget, QListWidget, QListWidgetItem)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView,
+                               QListWidget, QListWidgetItem)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence
 import os
-
-from core.constants import APP_NAME, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
-
-from domains.application.favorites_manager import FavoritesManager
 
 from domains.explorer.models.explorer_state import ExplorerState
 from domains.explorer.services.filesystem_service import FileSystemService
@@ -16,29 +11,29 @@ from domains.explorer.controllers.explorer_controller import ExplorerController
 from domains.explorer.widgets.explorer_tree import ExplorerTree
 from domains.explorer.widgets.finder_column_view import FinderColumnView
 from domains.explorer.widgets.breadcrumb_bar import BreadcrumbBar
-from domains.explorer.widgets.navigation_toolbar import NavigationToolbar
 from domains.explorer.widgets.file_metadata_panel import FileMetadataPanel
 
 
-class ExplorerWindow(QMainWindow):
+class ExplorerTab(QWidget):
+    """
+    A single tab containing a full explorer view (breadcrumbs, tree/finder, metadata).
+    This object acts as the 'view' passed to ExplorerController.
+    """
 
-    def __init__(self):
+    def __init__(self, parent_window, initial_path: str, favorites_manager):
         """
-        Initialize the explorer window, controller and UI.
+        parent_window: the main ExplorerWindow instance (used for shared UI like search results)
+        initial_path: starting directory for this tab
+        favorites_manager: shared FavoritesManager instance
         """
-        super().__init__()
+        super().__init__(parent_window)
+        self.parent_window = parent_window
+        self.initial_path = initial_path or str(Path.home())
+        self.favorites_manager = favorites_manager
 
-        self.setWindowTitle(APP_NAME)
-        self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
-
-        # -------------------------
-        # CORE LAYERS
-        # -------------------------
-
-        self.state = ExplorerState(current_path=str(Path.home()))
+        # Per-tab model/state/controller
+        self.state = ExplorerState(current_path=self.initial_path)
         self.fs = FileSystemService()
-        self.favorites_manager = FavoritesManager()
-
         self.controller = ExplorerController(
             self.state,
             self.fs,
@@ -47,28 +42,20 @@ class ExplorerWindow(QMainWindow):
         )
 
         self._build_ui()
-
+        # Navigate to initial path
         self.controller.set_current_path(self.state.current_path)
 
-    # -------------------------
-    # UI
-    # -------------------------
-
     def _build_ui(self):
-        """
-        Build the main UI layout and widgets.
-        """
-
         root = QWidget()
-        self.setCentralWidget(root)
-
-        layout = QVBoxLayout(root)
+        # We'll keep self as the root for the tab
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # Breadcrumb
         self.breadcrumb = BreadcrumbBar(self.controller.set_current_path)
         layout.addWidget(self.breadcrumb)
 
-        # Stack
+        # Stack (tree/finder)
         self.stack = QStackedWidget()
 
         # TREE MODE
@@ -82,16 +69,14 @@ class ExplorerWindow(QMainWindow):
             self.controller.on_tree_clicked,
             self.controller
         )
-
         self.tree.setMinimumWidth(300)
 
-        # SECOND COLUMN WIDGET: (here, as an example, a QListView showing list of files in selected directory)
+        # SECOND COLUMN WIDGET: QListView as before
         self.detail_list = QListView()
         self.detail_list.setModel(self.fs.model)
         self.detail_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.detail_list.customContextMenuRequested.connect(self.show_list_context_menu)
         self.detail_list.doubleClicked.connect(self.controller.on_double_clicked)
-        # self.detail_list.clicked.connect(self.show_details_for_index)  # gets buggy with macOS touchapd
 
         splitter.addWidget(self.tree)
         splitter.addWidget(self.detail_list)
@@ -129,174 +114,84 @@ class ExplorerWindow(QMainWindow):
 
         layout.addWidget(self.stack)
 
-        # Toolbar
-        self.toolbar = NavigationToolbar(self, self.controller, self.favorites_manager)  # Store as attribute for update
-        self.addToolBar(self.toolbar)
-
-        # --------------------------
-        # SEARCH RESULTS DOCK
-        # --------------------------
-
-        self.search_results_dock = QDockWidget("Search Results", self)
-        self.search_results_list = QListWidget()
-        self.search_results_list.itemClicked.connect(self._on_search_result_clicked)
-        self.search_results_dock.setWidget(self.search_results_list)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.search_results_dock)
-        self.search_results_dock.hide()  # Hidden by default
-
-    # -------------------------
-    # CALLED BY CONTROLLER
-    # -------------------------
+    # Methods expected by the controller (previously in ExplorerWindow)
 
     def update_path(self, index, path: str):
         """
-        Update the view and UI to reflect the new path.
-
-        Args:
-            index: The model index for the directory.
-            path: The current path as a string.
+        Update the view and UI to reflect the new path for this tab.
         """
         self.breadcrumb.set_path(path)
 
         self.tree.setRootIndex(index)
         self.column.setRootIndex(index)
 
-        self.statusBar().showMessage(path)
+        # If the main window has a status bar, show the current path
+        if hasattr(self.parent_window, "statusBar"):
+            self.parent_window.statusBar().showMessage(path)
+
         self.metadata_panel.set_path(path)
 
-    def show_list_context_menu(self, point):
-        """
-        Show the context menu in the detail list view.
+        # Notify main window so it can update the tab title/tooltip if needed
+        if hasattr(self.parent_window, "update_tab_title_for_widget"):
+            self.parent_window.update_tab_title_for_widget(self, path)
 
-        Args:
-            point: The QPoint where the menu should appear.
-        """
+    def show_list_context_menu(self, point):
         index = self.detail_list.indexAt(point)
-        if index.isValid():  # On file/folder
+        if index.isValid():
             self.controller.show_context_menu(self.detail_list, index, point, directory_mode=False)
-        else:  # On blank area: use the current directory displayed in the details pane
+        else:
             dir_index = self.detail_list.rootIndex()
             self.controller.show_context_menu(self.detail_list, dir_index, point, directory_mode=True)
 
     def update_finder_metadata_panel(self, index):
-        """
-        Update the finder metadata panel.
-
-        Args:
-            index: The model index for the directory.
-        """
         path = self.fs.model.filePath(index)
         self.metadata_panel_finder.set_path(path)
 
     def update_favorites_menu(self):
         """
-        Update the Favorites menu in the navigation toolbar.
-
-        Called whenever the list of favorites changes.
+        Called by controller (when favorites change) to refresh main toolbar favorites.
+        Delegate to parent window which owns the toolbar.
         """
-        self.toolbar.update_favorites_menu()
+        if hasattr(self.parent_window, "update_favorites_menu"):
+            self.parent_window.update_favorites_menu()
 
-    # -------------------------
-    # VIEW MODES
-    # -------------------------
+    def open_selected_in_native(self):
+        """
+        Called by parent window when global 'open in native' or shortcut is triggered.
+        Determine selection in this tab and forward to controller.
+        """
+        current_index = self.stack.currentIndex()
+        if current_index == 0:  # tree
+            selected = self.tree.selectedIndexes()
+            if selected:
+                self.controller.open_item_in_native(selected[0])
+        elif current_index == 1:
+            selected = self.column.selectedIndexes()
+            if selected:
+                self.controller.open_item_in_native(selected[0])
+
+    # Search results are displayed by the main window's dock; controllers call view.display_search_results()
+    def display_search_results(self, results: list) -> None:
+        """
+        Proxy request to parent main window to render search results.
+        """
+        if hasattr(self.parent_window, "display_search_results"):
+            self.parent_window.display_search_results(results)
 
     def set_mode(self, index: int):
         """
-        Switches between view modes (tree and finder).
-
-        Args:
-            index: The model index of the view mode.
+        Switch tree/finder for this tab.
         """
         self.stack.setCurrentIndex(index)
 
     def show_details_for_index(self, index):
         """
-        Show the list of files for the selected directory.
-
-        Args:
-            index: The selected QModelIndex .
+        Similar to ExplorerWindow.show_details_for_index but per-tab.
         """
         if self.fs.model.isDir(index):
             self.detail_list.setRootIndex(index)
         else:
-            # Optionally set to parent directory or clear
             parent = index.parent()
             self.detail_list.setRootIndex(parent)
         path = self.fs.model.filePath(index)
         self.metadata_panel.set_path(path)
-
-    # -------------------------
-    # KEYBOARD SHORTCUTS
-    # -------------------------
-    def keyPressEvent(self, event):
-        """
-        Handle keyboard shortcuts globally for the explorer window.
-
-        Args:
-            event: The QKeyEvent object.
-        """
-        # Check for Ctrl+1 shortcut
-        if event.key() == Qt.Key_1 and event.modifiers() == Qt.ControlModifier:
-            self.open_selected_in_native()
-            return
-
-        # Call parent implementation for other shortcuts
-        super().keyPressEvent(event)
-
-    def open_selected_in_native(self):
-        """
-        Open the currently selected item in the native file browser.
-        Determines which view is active and gets the selected index.
-        """
-        # Get the currently active view (tree or column view)
-        current_index = self.stack.currentIndex()
-
-        if current_index == 0:  # Tree view is active
-            selected = self.tree.selectedIndexes()
-            if selected:
-                self.controller.open_item_in_native(selected[0])
-        elif current_index == 1:  # Finder column view is active
-            selected = self.column.selectedIndexes()
-            if selected:
-                self.controller.open_item_in_native(selected[0])
-
-    def display_search_results(self, results: list) -> None:
-        """
-        Display search results in the results panel.
-
-        Args:
-            results: List of file paths matching search
-        """
-        self.search_results_list.clear()
-
-        if not results:
-            self.search_results_dock.hide()
-            return
-
-        self.search_results_dock.show()
-
-        for path in results:
-            item = QListWidgetItem(path)
-            item.setData(Qt.UserRole, path)  # Store full path
-            self.search_results_list.addItem(item)
-
-    def _on_search_result_clicked(self, item: QListWidgetItem) -> None:
-        """
-        Handle clicking on a search result.
-        Navigates to the file's parent directory.
-
-        Args:
-            item: The clicked list widget item
-        """
-        path = item.data(Qt.UserRole)
-
-        if not path or not os.path.exists(path):
-            return
-
-        # If it's a file, navigate to its parent directory
-        if os.path.isfile(path):
-            parent_path = os.path.dirname(path)
-            self.controller.set_current_path(parent_path)
-        else:
-            # If it's a directory, navigate to it
-            self.controller.set_current_path(path)
