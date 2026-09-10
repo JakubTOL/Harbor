@@ -22,16 +22,10 @@ class FinderColumnView(QColumnView):
         self.customContextMenuRequested.connect(self.show_context_menu)
 
     def show_context_menu(self, point: QPoint):
-        """
-        Show context menu at given point in the column view.
-
-        Args:
-            point (QPoint): The location for the menu.
-        """
         index = self.indexAt(point)
         if index.isValid():  # Right-clicked on file/folder
             self.controller.show_context_menu(self, index, point, directory_mode=False)
         else:  # Right-clicked empty area: use folder this column is displaying
-            dir_index = self.rootIndex()  # This index points to the folder backing the column/list/tree
+            dir_index = self.rootIndex()
             self.controller.show_context_menu(self, dir_index, point, directory_mode=True)
-        self.controller.show_context_menu(self, index, point)
+        # removed the extra self.controller.show_context_menu(...) call
