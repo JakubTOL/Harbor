@@ -87,7 +87,11 @@ class NavigationToolbar(QToolBar):
 
     def update_favorites_menu(self):
         self.favorites_menu.clear()
+
         for path in self.favorites_manager.all():
+            if not path or not os.path.isdir(path):
+                continue
+
             dir_name = os.path.basename(path) or path
             action = QAction(dir_name, self)
             action.setToolTip(path)
@@ -95,6 +99,10 @@ class NavigationToolbar(QToolBar):
             self.favorites_menu.addAction(action)
 
     def _on_favorite_selected(self, path: str):
+        normalized = str(Path(path).expanduser().resolve(strict=False)) if path else ""
+        if not normalized or not os.path.isdir(normalized):
+            return
+
         ctrl = self.window.get_active_controller()
         if ctrl:
-            ctrl.set_current_path(path)
+            ctrl.set_current_path(normalized)

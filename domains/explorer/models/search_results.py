@@ -25,8 +25,13 @@ class SearchResults:
         Args:
             path: File path to add
         """
-        if path and path not in self.results:
-            self.results.append(path)
+        if not path or path in self.results:
+            return
+
+        if len(self.results) >= 100:
+            return
+
+        self.results.append(path)
 
     def clear(self) -> None:
         """

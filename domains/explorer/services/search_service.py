@@ -17,6 +17,7 @@ class SearchWorker(QObject):
         """Initialize the search worker."""
         super().__init__()
         self.stop_search = False
+        self.max_results = 200
 
     def search(self, root_path: str, query: str) -> None:
         """
@@ -28,29 +29,29 @@ class SearchWorker(QObject):
         """
         self.stop_search = False
         query_lower = query.lower()
+        matches = 0
 
         try:
             for dirpath, dirnames, filenames in os.walk(root_path):
-                # Check if search should be stopped
                 if self.stop_search:
                     break
 
-                # Search through filenames in current directory
                 for filename in filenames:
                     if self.stop_search:
                         break
 
-                    # Case-insensitive substring match
+                    if matches >= self.max_results:
+                        self.stop_search = True
+                        break
+
                     if query_lower in filename.lower():
                         full_path = os.path.join(dirpath, filename)
-                        # Emit signal (thread-safe!)
                         self.result_found.emit(full_path)
+                        matches += 1
 
         except (PermissionError, OSError):
-            # Silently skip inaccessible directories
             pass
         finally:
-            # Signal completion (thread-safe!)
             self.search_finished.emit()
 
     def stop(self) -> None:
@@ -69,41 +70,21 @@ class SearchService:
         self.search_thread: Optional[threading.Thread] = None
         self.worker: Optional[SearchWorker] = None
 
-    def search_files(
-            self,
-            root_path: str,
-            query: str,
-            on_result: Callable[[str], None],
-            on_complete: Callable[[], None]
-    ) -> None:
-        """
-        Search for files matching query in root_path asynchronously.
-
-        Args:
-            root_path: Root directory to search in
-            query: Search term (case-insensitive substring match)
-            on_result: Callback function called with each match (file path as string)
-            on_complete: Callback function called when search completes
-        """
-        # Stop any existing search
+    def search_files(self, root_path, query, on_result, on_complete):
         if self.worker:
             self.worker.stop()
 
         if self.search_thread and self.search_thread.is_alive():
-            self.search_thread.join(timeout=2)
+            self.search_thread.join(timeout=0.2)
 
-        # Create new worker
         self.worker = SearchWorker()
-
-        # Connect signals to callbacks
         self.worker.result_found.connect(on_result)
         self.worker.search_finished.connect(on_complete)
 
-        # Start search in background thread
         self.search_thread = threading.Thread(
             target=self.worker.search,
             args=(root_path, query),
-            daemon=True
+            daemon=True,
         )
         self.search_thread.start()
 

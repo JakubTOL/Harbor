@@ -65,11 +65,12 @@ class ExplorerController:
         self.set_current_path(str(Path.home()))
 
     def refresh(self):
-        """
-        Refresh the filer explorer view for the current directory.
-        """
         current = self.state.current_path
-        self.fs.model.setRootPath("")
+        if not self.fs.exists(current):
+            return
+
+        # Avoid broad root reset; refresh the active directory only
+        self.fs.model.setRootPath(current)
         self.set_current_path(current)
 
     # -----------------------------

@@ -1,5 +1,6 @@
 import os
 import json
+import tempfile
 from pathlib import Path
 
 def get_favorites_file_path():
@@ -17,6 +18,18 @@ def get_favorites_file_path():
     os.makedirs(config_dir, exist_ok=True)
     return os.path.join(config_dir, "favorites.json")
 
+def canonicalize_path(path: str) -> str:
+    """
+    Normalize a path for comparison and storage.
+    """
+    if not path:
+        return ""
+
+    try:
+        return str(Path(path).expanduser().resolve(strict=False))
+    except Exception:
+        return str(Path(path).expanduser())
+
 class FavoritesManager:
     """
     Manager class for handling user favorites directories.
@@ -33,20 +46,66 @@ class FavoritesManager:
 
     def load(self):
         """
-        Load favorites from disk, or start with an empty list if unavailable.
+        Load favorites from disk, filtering invalid or duplicate entries.
         """
         try:
             with open(self.fav_path, "r", encoding="utf-8") as f:
-                self.favorites = json.load(f)
-        except Exception:
+                raw_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
             self.favorites = []
+            return
+
+        if not isinstance(raw_data, list):
+            self.favorites = []
+            return
+
+        seen = set()
+        valid_paths = []
+
+        for item in raw_data:
+            if not item or not isinstance(item, str):
+                continue
+
+            normalized = canonicalize_path(item)
+            if not normalized or not os.path.isdir(normalized):
+                continue
+
+            key = normalized.lower()
+            if key in seen:
+                continue
+
+            seen.add(key)
+            valid_paths.append(normalized)
+
+        self.favorites = valid_paths
 
     def save(self):
         """
-        Persist the favorites list to disk as a JSON file.
+        Persist favorites to disk using an atomic write to avoid corruption.
         """
-        with open(self.fav_path, "w", encoding="utf-8") as f:
-            json.dump(self.favorites, f)
+        directory = os.path.dirname(self.fav_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                delete=False,
+                encoding="utf-8",
+                dir=directory or None
+            ) as tmp:
+                temp_path = tmp.name
+                json.dump(self.favorites, tmp)
+
+            os.replace(temp_path, self.fav_path)
+        except Exception:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+            raise
 
     def add_favorite(self, path):
         """
@@ -55,9 +114,16 @@ class FavoritesManager:
         Args:
             path (str): The directory path to add.
         """
-        if path not in self.favorites:
-            self.favorites.append(path)
-            self.save()
+        normalized = canonicalize_path(path)
+        if not normalized or not os.path.isdir(normalized):
+            return
+
+        existing_keys = {item.lower() for item in self.favorites}
+        if normalized.lower() in existing_keys:
+            return
+
+        self.favorites.append(normalized)
+        self.save()
 
     def remove_favorite(self, path):
         """
@@ -66,9 +132,15 @@ class FavoritesManager:
         Args:
             path (str): The directory path to remove.
         """
-        if path in self.favorites:
-            self.favorites.remove(path)
-            self.save()
+        normalized = canonicalize_path(path)
+        if not normalized:
+            return
+
+        self.favorites = [
+            item for item in self.favorites
+            if item.lower() != normalized.lower()
+        ]
+        self.save()
 
     def is_favorite(self, path):
         """
@@ -80,7 +152,12 @@ class FavoritesManager:
         Returns:
             bool: True if the path is a favorite, False otherwise.
         """
-        return path in self.favorites
+        normalized = canonicalize_path(path)
+        if not normalized:
+            return False
+
+        return any(item.lower() == normalized.lower() for item in self.favorites)
+
 
     def all(self):
         """
