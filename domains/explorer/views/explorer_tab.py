@@ -1,7 +1,8 @@
 from pathlib import Path
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QStackedWidget, QSplitter, QListView,
                                QListWidget, QListWidgetItem)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QShortcut, QKeySequence
 import os
 
 from domains.explorer.models.explorer_state import ExplorerState
@@ -44,6 +45,9 @@ class ExplorerTab(QWidget):
         self._build_ui()
         # Navigate to initial path
         self.controller.set_current_path(self.state.current_path)
+
+        self.preview_shortcut = QShortcut(QKeySequence(Qt.Key_Space), self)
+        self.preview_shortcut.activated.connect(self._preview_active_file)
 
     def _build_ui(self):
         root = QWidget()
@@ -113,6 +117,15 @@ class ExplorerTab(QWidget):
         self.stack.addWidget(finder_page)
 
         layout.addWidget(self.stack)
+
+        QTimer.singleShot(0, lambda: self.tree.setFocus())
+        QTimer.singleShot(0, lambda: self.column.setFocus())
+
+    def _on_stack_changed(self, index):
+        if index == 0:
+            QTimer.singleShot(0, self.tree.setFocus)
+        elif index == 1:
+            QTimer.singleShot(0, self.column.setFocus)
 
     # Methods expected by the controller (previously in ExplorerWindow)
 
@@ -195,3 +208,26 @@ class ExplorerTab(QWidget):
             self.detail_list.setRootIndex(parent)
         path = self.fs.model.filePath(index)
         self.metadata_panel.set_path(path)
+
+    def _preview_active_file(self):
+        current_view = self.stack.currentIndex()
+
+        if current_view == 0:
+            view = self.tree
+            idx = view.currentIndex()
+            if not idx.isValid():
+                idx = view.selectionModel().currentIndex()
+        else:
+            view = self.column
+            idx = view.currentIndex()
+            if not idx.isValid():
+                idx = view.selectionModel().currentIndex()
+
+        if not idx.isValid():
+            return
+
+        path = self.fs.model.filePath(idx)
+        if self.fs.is_dir(path):
+            return
+
+        self.controller.preview_service.show_preview(path, self.parent_window)

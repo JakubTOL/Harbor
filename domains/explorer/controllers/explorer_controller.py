@@ -9,6 +9,7 @@ import subprocess
 
 from domains.explorer.services.search_service import SearchService
 from domains.explorer.models.search_results import SearchResults
+from domains.explorer.services.preview_service import PreviewService
 
 
 class ExplorerController:
@@ -28,6 +29,7 @@ class ExplorerController:
         self.favorites = favorites_manger
         self.search_service = SearchService()
         self.search_results = SearchResults(query="")
+        self.preview_service = PreviewService()
 
     # -----------------------------
     # NAVIGATION CORE
@@ -438,3 +440,33 @@ class ExplorerController:
         """
         self.search_results.is_searching = False
         self.view.display_search_results(self.search_results.results[:100])
+
+    # -----------------------------
+    # PREVIEW
+    # -----------------------------
+
+    def show_preview_for_current_selection(self):
+        """
+        Show a floating Quick Look style preview window for the selected file.
+        """
+
+        current_view = self.view.stack.currentIndex()
+
+        if current_view == 0:
+            idx = self.view.tree.currentIndex()
+            if not idx.isValid():
+                idx = self.view.tree.selectionModel().currentIndex()
+        else:
+            idx = self.view.column.currentIndex()
+            if not idx.isValid():
+                idx = self.view.column.selectionModel().currentIndex()
+
+        if not idx.isValid():
+            return
+
+        path = self.fs.file_path(idx)
+
+        if self.fs.is_dir(path):
+            return
+
+        self.preview_service.show_preview(path, self.view)

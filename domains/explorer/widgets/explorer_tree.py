@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QTreeView, QMenu
-from PySide6.QtGui import QAction
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QAction, QShortcut, QKeySequence
+from PySide6.QtCore import QPoint, Qt, QEvent
 
 class ExplorerTree(QTreeView):
 
@@ -28,6 +28,20 @@ class ExplorerTree(QTreeView):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
 
+        # focus matters
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.viewport().setFocusPolicy(Qt.StrongFocus)
+
+        # install on viewport, not only on the outer view
+        self.viewport().installEventFilter(self)
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
+                if self.controller is not None:
+                    self.controller.show_preview_for_current_selection()
+                return True
+            return super().eventFilter(obj, event)
+
     def expand_or_collapse_on_click(self, index):
         """
         Expand or collapse a tree node upon click.
@@ -39,6 +53,26 @@ class ExplorerTree(QTreeView):
             self.collapse(index)
         else:
             self.expand(index)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Space:
+                print("SPACE pressed on tree view")
+
+                idx = self.currentIndex()
+                if idx.isValid():
+                    path = self.model().filePath(idx)
+                    print("current path:", path)
+
+                    if self.controller is not None:
+                        if not self.model().isDir(idx):
+                            # do not rely on selectedIndexes
+                            self.controller.show_preview_for_current_selection()
+                            return True
+
+                return True  # consume the key, even if no preview
+
+        return super().eventFilter(obj, event)
 
     def show_context_menu(self, point: QPoint):
         """
@@ -74,3 +108,31 @@ class ExplorerTree(QTreeView):
         menu.addAction(delete_action)
 
         menu.exec(self.viewport().mapToGlobal(point))
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Space:
+            if self.controller is not None:
+                self.controller.show_preview_for_current_selection()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
+
+    def _on_space_pressed(self):
+        if self.controller is None:
+            return
+
+        if self.controller.fs is None:
+            return
+
+        selected = self.selectedIndexes()
+        if not selected:
+            return
+
+        index = selected[0]
+        path = self.controller.fs.file_path(index)
+
+        if self.controller.fs.is_dir(path):
+            return
+
+        self.controller.show_preview_for_current_selection()
