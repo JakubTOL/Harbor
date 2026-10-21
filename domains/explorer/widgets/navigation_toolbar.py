@@ -29,17 +29,6 @@ class NavigationToolbar(QToolBar):
 
         self.addSeparator()
 
-        # Tab actions
-        new_tab_act = QAction("New Tab", window)
-        close_tab_act = QAction("Close Tab", window)
-        new_tab_act.triggered.connect(lambda: window.create_new_tab())
-        close_tab_act.triggered.connect(lambda: window.close_current_tab())
-
-        self.addAction(new_tab_act)
-        self.addAction(close_tab_act)
-
-        self.addSeparator()
-
         # Favorites menu
         self.favorites_menu = QMenu("Favorites", self)
         self.favorites_button = QToolButton(self)

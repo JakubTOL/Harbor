@@ -11,6 +11,7 @@ from domains.application.favorites_manager import FavoritesManager
 from domains.explorer.views.explorer_tab import ExplorerTab
 
 from domains.explorer.widgets.navigation_toolbar import NavigationToolbar
+from domains.explorer.widgets.tab_bar import AddTabTabBar
 
 
 class ExplorerWindow(QMainWindow):
@@ -28,10 +29,12 @@ class ExplorerWindow(QMainWindow):
         self.favorites_manager = FavoritesManager()
 
         # Tab widget as central area
-        self.tabs = QTabWidget()
+        self.tabs = QTabWidget(self)
+        self.tabs.setTabBar(AddTabTabBar(self.tabs))
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self._on_tab_close_requested)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.tabs.tabBar().plusClicked.connect(lambda: self.create_new_tab())
         self.setCentralWidget(self.tabs)
 
         # choose tab naming mode: "iterative" or "basename"
