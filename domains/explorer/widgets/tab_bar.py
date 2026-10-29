@@ -1,4 +1,3 @@
-# domains/explorer/widgets/tab_bar.py
 from PySide6.QtWidgets import QTabBar
 from PySide6.QtCore import QRect, Qt, Signal
 from PySide6.QtGui import QPainter, QColor, QPen
@@ -36,7 +35,6 @@ class AddTabTabBar(QTabBar):
             self.update()
             return
 
-        # Only show the + when near the end of the last tab
         last_tab = self.tabRect(self.count() - 1)
         if not last_tab.isValid():
             self._show_plus = False
@@ -44,19 +42,20 @@ class AddTabTabBar(QTabBar):
             self.update()
             return
 
-        margin = 30
-        near_end = pos.x() >= (self.width() - margin)
+        size = 18
+        gap = 10
 
-        if near_end and pos.y() >= 0 and pos.y() <= self.height():
-            size = 18
-            x = self.width() - size - 10
-            y = (self.height() - size) // 2
-            self._plus_rect = QRect(x, y, size, size)
-            self._show_plus = True
-        else:
-            self._plus_rect = QRect()
-            self._show_plus = False
+        # Place the "+" just to the right of the last tab, not at the far right edge
+        x = last_tab.right() + gap
+        y = last_tab.top() + (last_tab.height() - size) // 2
 
+        # Keep it inside the tab bar if the tab is near the right edge
+        max_x = self.width() - size - 6
+        x = min(x, max_x)
+        x = max(x, 0)
+
+        self._plus_rect = QRect(x, y, size, size)
+        self._show_plus = True
         self.update()
 
     def paintEvent(self, event):
